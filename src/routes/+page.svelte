@@ -21,6 +21,17 @@
   let dictionary: string[] = [];
   let dictionarySet = new Set<string>();
   let inputEl: HTMLInputElement | null = null;
+  let nameEl: HTMLInputElement | null = null;
+
+  type HighScore = {
+    name: string;
+    score: number;
+  };
+
+  const highScoreKey = 'word-trail-highscores';
+  let highScores: HighScore[] = [];
+  let pendingScore: number | null = null;
+  let playerName = '';
 
   let timerId: ReturnType<typeof setInterval> | undefined;
 
@@ -156,6 +167,7 @@
         timeLeft = 0;
         clearTimer();
         status = 'Temps écoulé !';
+        finishGame();
       }
     }, 1000);
   };
@@ -169,6 +181,8 @@
     inputWord = '';
     status = 'Trouvez des mots en ligne droite';
     highlightIndex = 0;
+    pendingScore = null;
+    playerName = '';
     startTimer();
     inputEl?.focus();
   };
@@ -264,7 +278,63 @@
     if (event.key === 'Enter') submitWord();
   };
 
+  const loadHighScores = () => {
+    const stored = localStorage.getItem(highScoreKey);
+    if (!stored) {
+      highScores = [];
+      return;
+    }
+    try {
+      const parsed = JSON.parse(stored) as HighScore[];
+      if (Array.isArray(parsed)) {
+        highScores = parsed
+          .filter((entry) => entry && typeof entry.name === 'string' && typeof entry.score === 'number')
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 10);
+      } else {
+        highScores = [];
+      }
+    } catch {
+      highScores = [];
+    }
+  };
+
+  const saveHighScores = () => {
+    localStorage.setItem(highScoreKey, JSON.stringify(highScores.slice(0, 10)));
+  };
+
+  const isHighScore = (value: number) => {
+    if (highScores.length < 10) return value > 0;
+    const lowest = highScores[highScores.length - 1]?.score ?? 0;
+    return value > lowest;
+  };
+
+  const finishGame = () => {
+    if (isHighScore(score)) {
+      pendingScore = score;
+      playerName = '';
+      setTimeout(() => (nameEl as HTMLInputElement | null)?.focus(), 0);
+    }
+  };
+
+  const submitHighScore = () => {
+    if (pendingScore === null) return;
+    const cleaned = playerName
+      .normalize('NFD')
+      .replace(/[^a-zA-Z]/g, '')
+      .toUpperCase()
+      .slice(0, 3);
+    if (cleaned.length !== 3) return;
+    highScores = [...highScores, { name: cleaned, score: pendingScore }]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+    saveHighScores();
+    pendingScore = null;
+    playerName = '';
+  };
+
   onMount(() => {
+    loadHighScores();
     restart();
     return clearTimer;
   });
@@ -275,51 +345,44 @@
 </svelte:head>
 
 <main class="page">
-  <section class="hero">
-    <div class="headline">
-      <h1>Trace de mots</h1>
-      <p class="subtitle">Composez des mots en ligne droite. Plus c'est long, plus ça rapporte.</p>
-    </div>
-    <div class="stats">
-      <div class="stat">
-        <span class="label">Temps</span>
-        <span class="value">{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}</span>
+  <section class="layout">
+    <aside class="column left">
+      <div class="intro">
+        <p class="kicker">Word Trail</p>
+        <h1>Trace de mots</h1>
+        <p class="subtitle">Composez des mots en ligne droite. Plus c'est long, plus ça rapporte.</p>
+        <div class="rules">
+          <p>Regardez la grille, trouvez des mots en ligne droite.</p>
+          <p>Les mots sont en francais, 3 a 8 lettres.</p>
+        </div>
       </div>
-      <div class="stat">
-        <span class="label">Score</span>
-        <span class="value">{score}</span>
+      <div class="panel">
+        <div class="input-row">
+          <input
+            type="text"
+            placeholder="Entrez un mot puis Entrer"
+            bind:value={inputWord}
+            on:keydown={handleKey}
+            disabled={timeLeft <= 0}
+            bind:this={inputEl}
+          />
+          <button type="button" on:click={submitWord} disabled={timeLeft <= 0}>Valider</button>
+        </div>
+        <p class="status">{status}</p>
+        <div class="found">
+          <p class="found-title">Mots trouvés</p>
+          {#if foundWords.length === 0}
+            <p class="empty">Aucun mot pour le moment.</p>
+          {:else}
+            <div class="chips">
+              {#each foundWords as word}
+                <span class="chip">{word}</span>
+              {/each}
+            </div>
+          {/if}
+        </div>
       </div>
-      <button class="restart" type="button" on:click={restart}>Recommencer</button>
-    </div>
-  </section>
-
-  <section class="play">
-    <div class="panel">
-      <div class="input-row">
-        <input
-          type="text"
-          placeholder="Entrez un mot puis Entrer"
-          bind:value={inputWord}
-          on:keydown={handleKey}
-          disabled={timeLeft <= 0}
-          bind:this={inputEl}
-        />
-        <button type="button" on:click={submitWord} disabled={timeLeft <= 0}>Valider</button>
-      </div>
-      <p class="status">{status}</p>
-      <div class="found">
-        <p class="found-title">Mots trouvés</p>
-        {#if foundWords.length === 0}
-          <p class="empty">Aucun mot pour le moment.</p>
-        {:else}
-          <div class="chips">
-            {#each foundWords as word}
-              <span class="chip">{word}</span>
-            {/each}
-          </div>
-        {/if}
-      </div>
-    </div>
+    </aside>
 
     <div class="board">
       {#if timeLeft <= 0}
@@ -327,6 +390,20 @@
           <div class="overlay-card">
             <p class="overlay-title">Temps écoulé</p>
             <p class="overlay-sub">La partie est terminée. Prêt à rejouer ?</p>
+            {#if pendingScore !== null}
+              <div class="name-entry">
+                <p class="name-label">Votre nom (3 lettres)</p>
+                <div class="name-row">
+                  <input
+                    type="text"
+                    maxlength="3"
+                    bind:value={playerName}
+                    bind:this={nameEl}
+                  />
+                  <button type="button" on:click={submitHighScore}>Valider</button>
+                </div>
+              </div>
+            {/if}
             <button type="button" on:click={restart}>Rejouer</button>
           </div>
         </div>
@@ -343,6 +420,41 @@
         {/each}
       {/each}
     </div>
+
+    <aside class="column right">
+      <div class="stats">
+        <div class="stat">
+          <span class="label">Temps</span>
+          <span class="value">{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}</span>
+        </div>
+        <div class="stat">
+          <span class="label">Score</span>
+          <span class="value">{score}</span>
+        </div>
+        <button class="restart" type="button" on:click={restart}>Recommencer</button>
+      </div>
+      <div class="scores-card">
+        <h2>Classement</h2>
+        <p class="scores-sub">Top 10 des meilleurs scores</p>
+        <div class="scores-table">
+          <div class="scores-row header">
+            <span>#</span>
+            <span>Nom</span>
+            <span>Score</span>
+          </div>
+          {#each highScores as entry, index}
+            <div class="scores-row">
+              <span>{index + 1}</span>
+              <span>{entry.name}</span>
+              <span>{entry.score}</span>
+            </div>
+          {/each}
+          {#if highScores.length === 0}
+            <p class="scores-empty">Aucun score pour l'instant.</p>
+          {/if}
+        </div>
+      </div>
+    </aside>
   </section>
 </main>
 
@@ -373,16 +485,25 @@
     gap: 32px;
   }
 
-  .hero {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(260px, 340px) minmax(0, 1fr) minmax(260px, 320px);
+    gap: 28px;
+    align-items: start;
   }
 
-  .headline {
-    max-width: 520px;
+  .column {
+    display: grid;
+    gap: 18px;
+  }
+
+  .intro {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 22px;
+    padding: 22px 24px;
+    box-shadow: 0 16px 32px rgba(15, 23, 36, 0.12);
+    display: grid;
+    gap: 12px;
   }
 
   .kicker {
@@ -391,6 +512,17 @@
     font-size: 12px;
     color: #b85042;
     margin: 0 0 12px;
+  }
+
+  .rules {
+    display: grid;
+    gap: 8px;
+    font-size: 14px;
+    color: #56627a;
+  }
+
+  .rules p {
+    margin: 0;
   }
 
   h1 {
@@ -413,6 +545,7 @@
     border-radius: 18px;
     box-shadow: 0 16px 30px rgba(22, 34, 54, 0.1);
   }
+
 
   .stat {
     display: flex;
@@ -447,15 +580,6 @@
     background: #0e1a2c;
   }
 
-  .play {
-    display: grid;
-    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
-    gap: 24px;
-    align-items: start;
-    justify-content: center;
-    justify-items: start;
-  }
-
   .panel {
     background: rgba(255, 255, 255, 0.95);
     border-radius: 20px;
@@ -464,7 +588,54 @@
     display: flex;
     flex-direction: column;
     gap: 20px;
-    width: min(360px, 100%);
+  }
+
+  .scores-card {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 18px 36px rgba(16, 24, 39, 0.12);
+    display: grid;
+    gap: 12px;
+  }
+
+  .scores-card h2 {
+    margin: 0;
+    font-size: 24px;
+  }
+
+  .scores-sub {
+    margin: 0;
+    font-size: 15px;
+    color: #5a677d;
+  }
+
+  .scores-table {
+    display: grid;
+    gap: 8px;
+  }
+
+  .scores-row {
+    display: grid;
+    grid-template-columns: 32px 1fr 1fr;
+    gap: 8px;
+    font-size: 18px;
+    color: #2b3443;
+  }
+
+  .scores-row.header {
+    font-weight: 600;
+    color: #7b879c;
+    text-transform: uppercase;
+    font-size: 13px;
+    letter-spacing: 0.16em;
+  }
+
+  .scores-empty {
+    margin: 0;
+    font-size: 15px;
+    color: #9aa4b2;
   }
 
   .input-row {
@@ -548,11 +719,6 @@
     overflow: hidden;
     justify-self: center;
     margin: 0 auto;
-    justify-self: center;
-    align-self: start;
-    margin-top: -30px;
-    margin-bottom: 40px;
-    margin-left: 100px;
   }
 
   .overlay {
@@ -599,6 +765,32 @@
     color: white;
   }
 
+  .name-entry {
+    display: grid;
+    gap: 10px;
+  }
+
+  .name-label {
+    margin: 0;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: #7b879c;
+  }
+
+  .name-row {
+    display: flex;
+    gap: 10px;
+  }
+
+  .name-row input {
+    width: 80px;
+    text-align: center;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+  }
+
   .tile {
     aspect-ratio: 1;
     display: grid;
@@ -617,12 +809,21 @@
   }
 
   @media (max-width: 900px) {
-    .play {
+    .layout {
       grid-template-columns: 1fr;
     }
 
     .board {
+      order: 2;
       --board-size: min(72vh, calc(100vw - 24px));
+    }
+
+    .column.left {
+      order: 1;
+    }
+
+    .column.right {
+      order: 3;
     }
   }
 
