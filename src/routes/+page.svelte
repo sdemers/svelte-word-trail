@@ -179,7 +179,7 @@
     foundWords = [];
     score = 0;
     inputWord = '';
-    status = autoStart ? 'Trouvez des mots en ligne droite' : 'Appuyez sur demarrer pour lancer la partie.';
+    status = autoStart ? 'Trouvez des mots en ligne droite' : 'Appuyez sur démarrer pour lancer la partie.';
     highlightIndex = 0;
     pendingScore = null;
     playerName = '';
@@ -259,12 +259,12 @@
     if (!word) return;
 
     if (foundWords.includes(word)) {
-      status = `Already found ${word}. Try another.`;
+      status = `${word} déjà trouvé. Réessayez autre chose.`;
       return;
     }
 
     if (!dictionarySet.has(word)) {
-      status = `${word} n'est pas dans le dictionnaire francais.`;
+      status = `${word} n'est pas dans le dictionnaire.`;
       return;
     }
 
@@ -356,11 +356,9 @@
     <aside class="column left">
       <div class="intro">
         <p class="kicker">Word Trail</p>
-        <h1>Trace de mots</h1>
         <p class="subtitle">Composez des mots en ligne droite. Plus c'est long, plus ça rapporte.</p>
         <div class="rules">
-          <p>Regardez la grille, trouvez des mots en ligne droite.</p>
-          <p>Les mots sont en francais, 3 a 8 lettres.</p>
+          <p>Les mots sont en français, 3 à 8 lettres.</p>
         </div>
       </div>
       <div class="panel">
@@ -396,8 +394,8 @@
         <div class="overlay">
           <div class="overlay-card">
             <p class="overlay-title">Pret a jouer ?</p>
-            <p class="overlay-sub">La grille est cachee. Lancez la partie pour commencer.</p>
-            <button type="button" on:click={startGame}>Demarrer</button>
+            <p class="overlay-sub">La grille est cachée. Lancez la partie pour commencer.</p>
+            <button type="button" on:click={startGame}>Démarrer</button>
           </div>
         </div>
       {:else if timeLeft <= 0}
@@ -526,7 +524,8 @@
   .kicker {
     text-transform: uppercase;
     letter-spacing: 0.36em;
-    font-size: 12px;
+    font-size: 20px;
+    font-weight: bold;
     color: #b85042;
     margin: 0 0 12px;
   }
