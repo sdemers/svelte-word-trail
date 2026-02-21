@@ -22,6 +22,7 @@
   let dictionarySet = new Set<string>();
   let inputEl: HTMLInputElement | null = null;
   let nameEl: HTMLInputElement | null = null;
+  let started = false;
 
   type HighScore = {
     name: string;
@@ -160,7 +161,6 @@
 
   const startTimer = () => {
     clearTimer();
-    timeLeft = totalSeconds;
     timerId = setInterval(() => {
       timeLeft -= 1;
       if (timeLeft <= 0) {
@@ -172,19 +172,26 @@
     }, 1000);
   };
 
-  const restart = () => {
+  const restart = (autoStart = true) => {
     buildDictionary();
     buildGrid();
     resetHighlights();
     foundWords = [];
     score = 0;
     inputWord = '';
-    status = 'Trouvez des mots en ligne droite';
+    status = autoStart ? 'Trouvez des mots en ligne droite' : 'Appuyez sur demarrer pour lancer la partie.';
     highlightIndex = 0;
     pendingScore = null;
     playerName = '';
-    startTimer();
+    timeLeft = totalSeconds;
+    clearTimer();
+    started = autoStart;
+    if (autoStart) startTimer();
     inputEl?.focus();
+  };
+
+  const startGame = () => {
+    restart(true);
   };
 
   const addScore = (word: string) => {
@@ -246,7 +253,7 @@
   };
 
   const submitWord = () => {
-    if (timeLeft <= 0) return;
+    if (timeLeft <= 0 || !started) return;
     const word = normalizeWord(inputWord.trim());
     inputWord = '';
     if (!word) return;
@@ -335,7 +342,7 @@
 
   onMount(() => {
     loadHighScores();
-    restart();
+    restart(false);
     return clearTimer;
   });
 </script>
@@ -357,17 +364,17 @@
         </div>
       </div>
       <div class="panel">
-        <div class="input-row">
-          <input
-            type="text"
-            placeholder="Entrez un mot puis Entrer"
-            bind:value={inputWord}
-            on:keydown={handleKey}
-            disabled={timeLeft <= 0}
-            bind:this={inputEl}
-          />
-          <button type="button" on:click={submitWord} disabled={timeLeft <= 0}>Valider</button>
-        </div>
+      <div class="input-row">
+        <input
+          type="text"
+          placeholder="Entrez un mot puis Entrer"
+          bind:value={inputWord}
+          on:keydown={handleKey}
+          disabled={timeLeft <= 0 || !started}
+          bind:this={inputEl}
+        />
+        <button type="button" on:click={submitWord} disabled={timeLeft <= 0 || !started}>Valider</button>
+      </div>
         <p class="status">{status}</p>
         <div class="found">
           <p class="found-title">Mots trouvés</p>
@@ -385,7 +392,15 @@
     </aside>
 
     <div class="board">
-      {#if timeLeft <= 0}
+      {#if !started}
+        <div class="overlay">
+          <div class="overlay-card">
+            <p class="overlay-title">Pret a jouer ?</p>
+            <p class="overlay-sub">La grille est cachee. Lancez la partie pour commencer.</p>
+            <button type="button" on:click={startGame}>Demarrer</button>
+          </div>
+        </div>
+      {:else if timeLeft <= 0}
         <div class="overlay">
           <div class="overlay-card">
             <p class="overlay-title">Temps écoulé</p>
@@ -404,21 +419,23 @@
                 </div>
               </div>
             {/if}
-            <button type="button" on:click={restart}>Rejouer</button>
+            <button type="button" on:click={() => restart(true)}>Rejouer</button>
           </div>
         </div>
       {/if}
-      {#each grid as row}
-        {#each row as cell}
-          <div
-            class="tile"
-            class:highlighted={cell.highlight}
-            style={cell.highlight ? `background: ${cell.highlight}` : ''}
-          >
-            {cell.letter}
-          </div>
+      <div class="board-grid" class:blurred={!started}>
+        {#each grid as row}
+          {#each row as cell}
+            <div
+              class="tile"
+              class:highlighted={cell.highlight}
+              style={cell.highlight ? `background: ${cell.highlight}` : ''}
+            >
+              {cell.letter}
+            </div>
+          {/each}
         {/each}
-      {/each}
+      </div>
     </div>
 
     <aside class="column right">
@@ -431,7 +448,7 @@
           <span class="label">Score</span>
           <span class="value">{score}</span>
         </div>
-        <button class="restart" type="button" on:click={restart}>Recommencer</button>
+        <button class="restart" type="button" on:click={() => restart(true)}>Recommencer</button>
       </div>
       <div class="scores-card">
         <h2>Classement</h2>
@@ -719,6 +736,14 @@
     overflow: hidden;
     justify-self: center;
     margin: 0 auto;
+  }
+
+  .board-grid {
+    display: contents;
+  }
+
+  .board-grid.blurred {
+    filter: blur(6px) saturate(0.9);
   }
 
   .overlay {
