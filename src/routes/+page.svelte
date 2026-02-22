@@ -18,7 +18,7 @@
 
   const size = 15;
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  
+
   let debugMode = $state(false);
   const totalSeconds = $derived(debugMode ? 20 : 300);
 
@@ -444,10 +444,10 @@
 </svelte:head>
 
 <main class="page">
-  <label class="debug-toggle">
+  <!-- <label class="debug-toggle">
     <input type="checkbox" bind:checked={debugMode} />
     Debug
-  </label>
+  </label> -->
   <section class="layout">
     <aside class="column left">
       <Intro />
@@ -465,7 +465,7 @@
     </aside>
 
     <div class="board-wrapper">
-      <GameOverlay 
+      <GameOverlay
         {started}
         {timeLeft}
         {pendingScore}
