@@ -377,29 +377,27 @@
     if (event.key === 'Enter') submitWord();
   };
 
-  const loadHighScores = () => {
-    const stored = localStorage.getItem(highScoreKey);
-    if (!stored) {
-      highScores = [];
-      return;
-    }
+  const loadHighScores = async () => {
     try {
-      const parsed = JSON.parse(stored) as HighScore[];
-      if (Array.isArray(parsed)) {
-        highScores = parsed
-          .filter((entry) => entry && typeof entry.name === 'string' && typeof entry.score === 'number')
-          .sort((a, b) => b.score - a.score)
-          .slice(0, 10);
-      } else {
-        highScores = [];
-      }
+      const response = await fetch('/api/highscores');
+      const data = await response.json();
+      highScores = data;
     } catch {
       highScores = [];
     }
   };
 
-  const saveHighScores = () => {
-    localStorage.setItem(highScoreKey, JSON.stringify(highScores.slice(0, 10)));
+  const saveHighScoreOnline = async (name: string, score: number) => {
+    try {
+      await fetch('/api/highscores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, score })
+      });
+      await loadHighScores();
+    } catch (error) {
+      console.error('Failed to save high score:', error);
+    }
   };
 
   const isHighScore = (value: number) => {
@@ -416,7 +414,7 @@
     }
   };
 
-  const submitHighScore = () => {
+  const submitHighScore = async () => {
     if (pendingScore === null) return;
     const cleaned = playerName
       .normalize('NFD')
@@ -424,10 +422,7 @@
       .toUpperCase()
       .slice(0, 3);
     if (cleaned.length !== 3) return;
-    highScores = [...highScores, { name: cleaned, score: pendingScore }]
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 10);
-    saveHighScores();
+    await saveHighScoreOnline(cleaned, pendingScore);
     pendingScore = null;
     playerName = '';
   };
