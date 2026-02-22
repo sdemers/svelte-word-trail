@@ -18,27 +18,31 @@
 
   const size = 15;
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const totalSeconds = 300;
+  
+  let debugMode = $state(false);
+  const totalSeconds = $derived(debugMode ? 20 : 300);
 
   let grid = $state<Cell[][]>([]);
   let inputWord = $state('');
   let foundWords = $state<string[]>([]);
   let score = $state(0);
-  let timeLeft = $state(totalSeconds);
+  let timeLeft = $state(300);
   let status = $state('Appuyez sur démarrer pour lancer la partie.');
-  let dictionary: string[] = [];
-  let dictionarySet = new Set<string>();
-  let inputEl: HTMLInputElement | null = null;
-  let nameEl: HTMLInputElement | null = null;
   let started = $state(false);
   let streak = $state(0);
-  let lastWordTime = 0;
   let feedbackClass = $state('');
   let celebrationClass = $state('');
   let lastPointsEarned = $state(0);
   let comboTimer = $state(0);
-  let comboTimerId: ReturnType<typeof setInterval> | undefined;
   let hasFoundWord = $state(false);
+  let highScores = $state<HighScore[]>([]);
+  let pendingScore = $state<number | null>(null);
+  let playerName = $state('');
+
+  let dictionary: string[] = [];
+  let dictionarySet = new Set<string>();
+  let inputEl = $state<HTMLInputElement | null>(null);
+  let nameEl = $state<HTMLInputElement | null>(null);
 
   type HighScore = {
     name: string;
@@ -46,16 +50,9 @@
   };
 
   const highScoreKey = 'word-trail-highscores';
-  let highScores = $state<HighScore[]>([]);
-  let pendingScore = $state<number | null>(null);
-  let playerName = '';
-
-  let timerId: ReturnType<typeof setInterval> | undefined;
 
   const randomLetter = () => alphabet[Math.floor(Math.random() * alphabet.length)];
 
-  let debugMode = $state(false);
-  
   const seed = 42;
   let rngState = seed;
   const seededRandom = () => {
@@ -107,6 +104,9 @@
   ];
 
   let highlightIndex = 0;
+  let timerId: ReturnType<typeof setInterval> | undefined;
+  let comboTimerId: ReturnType<typeof setInterval> | undefined;
+  let lastWordTime = 0;
 
   const nextHighlightColor = () => {
     const color = highlightPalette[highlightIndex % highlightPalette.length];
@@ -116,7 +116,7 @@
 
   const buildGrid = () => {
     if (debugMode) resetSeededRandom();
-    
+
     const emptyGrid = Array.from({ length: size }, () =>
       Array.from({ length: size }, () => ({ letter: '', highlight: null }))
     );
@@ -451,9 +451,8 @@
   <section class="layout">
     <aside class="column left">
       <Intro />
-      <WordInput 
+      <WordInput
         bind:inputWord
-        bind:inputEl
         {status}
         {feedbackClass}
         {celebrationClass}
@@ -470,8 +469,8 @@
         {started}
         {timeLeft}
         {pendingScore}
-        {playerName}
-        {nameEl}
+        bind:playerName
+        bind:nameEl
         onStart={startGame}
         onRestart={() => restart(true)}
         onSubmitHighScore={submitHighScore}
@@ -548,152 +547,6 @@
     gap: 48px;
   }
 
-  .intro {
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 22px;
-    padding: 22px 24px;
-    box-shadow: 0 16px 32px rgba(15, 23, 36, 0.12);
-    display: grid;
-    gap: 24px;
-  }
-
-  .kicker {
-    text-transform: uppercase;
-    letter-spacing: 0.36em;
-    font-size: 20px;
-    font-weight: bold;
-    color: #b85042;
-    margin: 0 0 12px;
-  }
-
-  .rules {
-    display: grid;
-    gap: 16px;
-    font-size: 14px;
-    color: #56627a;
-  }
-
-  .rules p {
-    margin: 0;
-  }
-
-  h1 {
-    font-size: clamp(40px, 5vw, 64px);
-    margin: 0 0 12px;
-  }
-
-  .subtitle {
-    margin: 0;
-    font-size: 16px;
-    color: #435169;
-  }
-
-  .stats {
-    display: flex;
-    align-items: center;
-    gap: 32px;
-    background: rgba(255, 255, 255, 0.8);
-    padding: 24px 28px;
-    border-radius: 18px;
-    box-shadow: 0 16px 30px rgba(22, 34, 54, 0.1);
-  }
-
-
-  .stat {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-  }
-
-
-  .label {
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.24em;
-    color: #7b879c;
-  }
-
-  .value {
-    font-size: 24px;
-    font-weight: 600;
-  }
-
-  .restart {
-    border: none;
-    background: #17263f;
-    color: white;
-    padding: 10px 18px;
-    border-radius: 999px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .restart:hover {
-    background: #0e1a2c;
-  }
-
-  .panel {
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 20px;
-    padding: 24px;
-    box-shadow: 0 18px 36px rgba(16, 24, 39, 0.12);
-    display: flex;
-    flex-direction: column;
-    gap: 32px;
-  }
-
-  .scores-card {
-    width: 100%;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 20px;
-    padding: 24px;
-    box-shadow: 0 18px 36px rgba(16, 24, 39, 0.12);
-    display: grid;
-    gap: 24px;
-  }
-
-  .scores-card h2 {
-    margin: 0;
-    font-size: 24px;
-  }
-
-  .scores-sub {
-    font-size: 15px;
-    color: #5a677d;
-  }
-
-  .scores-table {
-    display: grid;
-    gap: 16px;
-  }
-
-  .scores-row {
-    display: grid;
-    grid-template-columns: 32px 1fr 1fr;
-    gap: 16px;
-    font-size: 18px;
-    color: #2b3443;
-  }
-
-  .scores-row.header {
-    font-weight: 600;
-    color: #7b879c;
-    text-transform: uppercase;
-    font-size: 13px;
-    letter-spacing: 0.16em;
-  }
-
-  .scores-empty {
-    margin: 0;
-    font-size: 15px;
-    color: #9aa4b2;
-  }
-
-  .input-row {
-    display: flex;
-    gap: 12px;
-  }
 
   input {
     flex: 1;
@@ -708,137 +561,6 @@
     border-color: transparent;
   }
 
-  button {
-    border: none;
-    background: #f3a25b;
-    color: #321b0f;
-    padding: 12px 18px;
-    border-radius: 12px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  .status {
-    margin: 0;
-    color: #2f3c52;
-  }
-
-  .found-title {
-    margin: 0 0 8px;
-    font-weight: 600;
-  }
-
-  .chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .chip {
-    background: #f0e1d1;
-    color: #7a4a22;
-    padding: 6px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    letter-spacing: 0.08em;
-  }
-
-  .empty {
-    margin: 0;
-    color: #9aa4b2;
-  }
-
-  .overlay {
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(circle at top, rgba(255, 198, 172, 0.8), transparent 55%),
-      radial-gradient(circle at bottom, rgba(177, 213, 255, 0.8), transparent 55%),
-      rgba(249, 247, 242, 0.92);
-    display: grid;
-    place-items: center;
-    z-index: 2;
-    color: #1f2a3a;
-    backdrop-filter: blur(4px);
-  }
-
-  .overlay-card {
-    display: grid;
-    gap: 12px;
-    padding: 24px 28px;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 20px;
-    box-shadow: 0 18px 36px rgba(18, 28, 45, 0.2);
-    text-align: center;
-  }
-
-  .overlay-title {
-    margin: 0;
-    font-size: 26px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #c1463f;
-  }
-
-  .overlay-sub {
-    margin: 0;
-    font-size: 14px;
-    color: #3c4a5f;
-  }
-
-  .overlay button {
-    background: #17263f;
-    color: white;
-  }
-
-  .name-entry {
-    display: grid;
-    gap: 10px;
-  }
-
-  .name-label {
-    margin: 0;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    color: #7b879c;
-  }
-
-  .name-row {
-    display: flex;
-    gap: 10px;
-  }
-
-  .name-row input {
-    width: 80px;
-    text-align: center;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-  }
-
-  .tile {
-    aspect-ratio: 1;
-    display: grid;
-    place-items: center;
-    font-family: 'Rubik', 'Segoe UI', sans-serif;
-    font-size: clamp(12px, 1.6vw, 16px);
-    font-weight: 700;
-    color: #203148;
-    background: #edf1f6;
-    border-radius: 6px;
-    transition: transform 0.2s ease, background 0.2s ease;
-  }
-
-  .tile.highlighted {
-    transform: scale(1.08);
-  }
 
   @media (max-width: 900px) {
     .layout {
@@ -856,54 +578,6 @@
     .column.right {
       order: 3;
     }
-  }
-
-  .card-body {
-    padding: 1rem !important;
-  }
-
-  .overlay-title {
-    margin-bottom: 0.75rem;
-  }
-
-  .overlay-sub {
-    margin-bottom: 0.75rem;
-  }
-
-  .name-entry {
-    margin-bottom: 0.75rem;
-  }
-
-  .name-entry input {
-    margin-bottom: 0.25rem;
-  }
-
-  @media (max-width: 600px) {
-    .page {
-      padding: 32px 16px 48px;
-    }
-
-    .stats {
-      width: 100%;
-      justify-content: space-between;
-      flex-wrap: wrap;
-    }
-
-    .input-row {
-      flex-direction: column;
-    }
-  }
-
-  .input-success {
-    animation: glow-success 0.5s ease-out;
-  }
-
-  .input-error {
-    animation: shake 0.5s ease-out;
-  }
-
-  .celebration {
-    animation: celebrate 0.6s ease-out;
   }
 
   @keyframes shake {

@@ -3,8 +3,8 @@
     started, 
     timeLeft, 
     pendingScore,
-    playerName,
-    nameEl,
+    playerName = $bindable(),
+    nameEl = $bindable(),
     onStart,
     onRestart,
     onSubmitHighScore

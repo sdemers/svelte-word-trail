@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { tick } from 'svelte';
+  
   let { 
     inputWord = $bindable(), 
     status,
@@ -7,8 +9,7 @@
     started,
     timeLeft,
     onSubmit,
-    onKeyDown,
-    inputEl = $bindable()
+    onKeyDown
   }: { 
     inputWord: string;
     status: string;
@@ -18,8 +19,15 @@
     timeLeft: number;
     onSubmit: () => void;
     onKeyDown: (e: KeyboardEvent) => void;
-    inputEl: HTMLInputElement | null;
   } = $props();
+
+  let inputEl: HTMLInputElement | null = null;
+
+  $effect(() => {
+    if (started && timeLeft > 0) {
+      tick().then(() => inputEl?.focus());
+    }
+  });
 </script>
 
 <div class="panel card bg-base-100 shadow-xl">
