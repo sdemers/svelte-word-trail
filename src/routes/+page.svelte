@@ -1,6 +1,14 @@
 <script lang="ts">
   import { onMount } from 'svelte';
 
+  import Intro from '$lib/components/Intro.svelte';
+  import WordInput from '$lib/components/WordInput.svelte';
+  import FoundWords from '$lib/components/FoundWords.svelte';
+  import GameBoard from '$lib/components/GameBoard.svelte';
+  import GameOverlay from '$lib/components/GameOverlay.svelte';
+  import GameStats from '$lib/components/GameStats.svelte';
+  import Scoreboard from '$lib/components/Scoreboard.svelte';
+
   type Cell = {
     letter: string;
     highlight: string | null;
@@ -415,155 +423,54 @@
 <main class="page">
   <section class="layout">
     <aside class="column left">
-      <div class="intro card bg-base-100 shadow-xl">
-        <div class="card-body p-6">
-          <p class="kicker p-2 text-lg font-bold">Word Trail</p>
-          <p class="subtitle p-2 mt-4">Composez des mots en ligne droite. Plus c'est long, plus ça rapporte.</p>
-          <div class="rules p-2 mt-4">
-            <p>Les mots sont en français, 3 à 8 lettres.</p>
-          </div>
-        </div>
-      </div>
-      <div class="panel card bg-base-100 shadow-xl">
-        <div class="card-body p-6">
-          <div class="input-row mt-4">
-            <input
-              class="input input-bordered w-full transition-all {feedbackClass}"
-              class:input-success={feedbackClass === 'success'}
-              class:input-error={feedbackClass === 'error'}
-              type="text"
-              bind:value={inputWord}
-              on:keydown={handleKey}
-              disabled={timeLeft <= 0 || !started}
-              bind:this={inputEl}
-            />
-            <button class="btn btn-primary" type="button" on:click={submitWord} disabled={timeLeft <= 0 || !started}>Valider</button>
-          </div>
-          <p class="status p-2 mt-4 {celebrationClass}" class:text-primary={celebrationClass === 'celebration'} class:font-bold={celebrationClass === 'celebration'} class:scale-110={celebrationClass === 'celeblation'}>{status}</p>
-          <div class="found p-2 mt-4">
-            <p class="found-title">Mots trouvés</p>
-            {#if foundWords.length === 0}
-              <p class="empty">Aucun mot pour le moment.</p>
-            {:else}
-              <div class="chips">
-                {#each foundWords as word}
-                  <span class="chip badge badge-secondary">{word}</span>
-                {/each}
-              </div>
-            {/if}
-          </div>
-        </div>
-      </div>
+      <Intro />
+      <WordInput 
+        bind:inputWord
+        bind:inputEl
+        {status}
+        {feedbackClass}
+        {celebrationClass}
+        {started}
+        {timeLeft}
+        onSubmit={submitWord}
+        onKeyDown={handleKey}
+      />
+      <FoundWords {foundWords} />
     </aside>
 
-    <div class="board">
-      {#if !started}
-        <div class="overlay">
-          <div class="overlay-card card bg-base-100 shadow-2xl">
-            <div class="card-body items-center text-center p-8">
-              <p class="overlay-title text-2xl font-bold mb-6">Pret a jouer ?</p>
-              <p class="overlay-sub mb-6">La grille est cachée. Lancez la partie pour commencer.</p>
-              <button class="btn btn-primary btn-lg" type="button" on:click={startGame}>Démarrer</button>
-            </div>
-          </div>
-        </div>
-      {:else if timeLeft <= 0}
-        <div class="overlay">
-          <div class="overlay-card card bg-base-100 shadow-2xl">
-            <div class="card-body items-center text-center p-8">
-              <p class="overlay-title text-2xl font-bold mb-4">Temps écoulé</p>
-              <p class="overlay-sub mb-6">La partie est terminée. Prêt à rejouer ?</p>
-              {#if pendingScore !== null}
-                <div class="name-entry mb-4">
-                  <p class="name-label mb-2">Votre nom (3 lettres)</p>
-                  <div class="name-row">
-                    <input
-                      class="input input-bordered w-20 text-center uppercase"
-                      type="text"
-                      maxlength="3"
-                      bind:value={playerName}
-                      bind:this={nameEl}
-                    />
-                    <button class="btn btn-primary" type="button" on:click={submitHighScore}>Valider</button>
-                  </div>
-                </div>
-              {/if}
-              <button class="btn btn-primary btn-lg" type="button" on:click={() => restart(true)}>Rejouer</button>
-            </div>
-          </div>
-        </div>
-      {/if}
-      <div class="board-grid" class:blurred={!started}>
-        {#each grid as row}
-          {#each row as cell}
-            <div
-              class="tile"
-              class:highlighted={cell.highlight}
-              style={cell.highlight ? `background: ${cell.highlight}` : ''}
-            >
-              {cell.letter}
-            </div>
-          {/each}
-        {/each}
-      </div>
+    <div class="board-wrapper">
+      <GameOverlay 
+        {started}
+        {timeLeft}
+        {pendingScore}
+        {playerName}
+        {nameEl}
+        onStart={startGame}
+        onRestart={() => restart(true)}
+        onSubmitHighScore={submitHighScore}
+      />
+      <GameBoard {grid} {started} />
     </div>
 
     <aside class="column right">
-      <div class="stats card bg-base-100 shadow-xl">
-        <div class="card-body p-6 gap-4">
-          <div class="flex flex-col items-center gap-1">
-            <span class="label">Temps</span>
-            <span class="value">{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}</span>
-            <progress
-              class="progress w-56 mt-2 bg-gray-300 [&::-webkit-progress-bar]:bg-gray-300"
-              value={timeLeft}
-              max={totalSeconds}
-            ></progress>
-          </div>
-          <div class="flex flex-col items-center gap-1 mt-3">
-            <span class="label">Score</span>
-            <span class="value">{score}</span>
-            {#if hasFoundWord}
-              <span class="text-sm text-primary font-bold mt-1">Combo: {streak > 0 ? streak : 1}x</span>
-              <progress class="progress progress-primary w-32 h-2 mt-1" value={comboTimer} max="100"></progress>
-              {#if lastPointsEarned > 0}
-                <span class="text-xs text-secondary">+{lastPointsEarned} pts</span>
-              {/if}
-            {/if}
-          </div>
-          <div class="flex justify-center">
-            <button class="btn btn-secondary mt-2" type="button" on:click={() => restart(true)}>Recommencer</button>
-          </div>
-        </div>
-      </div>
-      <div class="scores-card card bg-base-100 shadow-xl">
-        <div class="card-body p-6">
-          <h2 class="card-title mb-4">Classement</h2>
-          <div class="scores-sub mt-3">Top 10 des meilleurs scores</div>
-          <div class="scores-table mt-3">
-            <div class="scores-row header">
-              <span>#</span>
-              <span>Nom</span>
-              <span>Score</span>
-            </div>
-            {#each highScores as entry, index}
-              <div class="scores-row">
-                <span>{index + 1}</span>
-                <span>{entry.name}</span>
-                <span>{entry.score}</span>
-              </div>
-            {/each}
-            {#if highScores.length === 0}
-              <p class="scores-empty">Aucun score pour l'instant.</p>
-            {/if}
-          </div>
-        </div>
-      </div>
+      <GameStats 
+        {timeLeft}
+        {totalSeconds}
+        {score}
+        {streak}
+        {comboTimer}
+        {hasFoundWord}
+        {lastPointsEarned}
+        onRestart={() => restart(true)}
+      />
+      <Scoreboard {highScores} />
     </aside>
   </section>
 </main>
 
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Rubik:wght@400;600;700&display=swap');
+
   :global(body) {
     margin: 0;
     font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
@@ -579,8 +486,6 @@
   :global(*) {
     box-sizing: border-box;
   }
-
-  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Rubik:wght@400;600;700&display=swap');
 
   .page {
     min-height: 100vh;
@@ -807,34 +712,6 @@
     color: #9aa4b2;
   }
 
-  .board {
-    display: grid;
-    --board-gap: 2px;
-    --board-size: min(72vh, calc(100vw - 32px));
-    --cell-size: calc((var(--board-size) - (14 * var(--board-gap))) / 15);
-    grid-template-columns: repeat(15, var(--cell-size));
-    gap: var(--board-gap);
-    padding: 16px;
-    width: calc(var(--board-size) + 32px);
-    height: calc(var(--board-size) + 32px);
-    box-sizing: border-box;
-    background: rgba(255, 255, 255, 0.85);
-    border-radius: 22px;
-    box-shadow: 0 20px 36px rgba(10, 20, 34, 0.12);
-    position: relative;
-    overflow: hidden;
-    justify-self: center;
-    margin: 0 auto;
-  }
-
-  .board-grid {
-    display: contents;
-  }
-
-  .board-grid.blurred {
-    filter: blur(6px) saturate(0.9);
-  }
-
   .overlay {
     position: absolute;
     inset: 0;
@@ -927,9 +804,8 @@
       grid-template-columns: 1fr;
     }
 
-    .board {
+    .board-wrapper {
       order: 2;
-      --board-size: min(72vh, calc(100vw - 24px));
     }
 
     .column.left {
