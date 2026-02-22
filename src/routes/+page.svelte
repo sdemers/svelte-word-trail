@@ -23,6 +23,14 @@
   let inputEl: HTMLInputElement | null = null;
   let nameEl: HTMLInputElement | null = null;
   let started = false;
+  let streak = 0;
+  let lastWordTime = 0;
+  let feedbackClass = '';
+  let celebrationClass = '';
+  let lastPointsEarned = 0;
+  let comboTimer = 0;
+  let comboTimerId: ReturnType<typeof setInterval> | undefined;
+  let hasFoundWord = false;
 
   type HighScore = {
     name: string;
@@ -179,13 +187,20 @@
     foundWords = [];
     score = 0;
     inputWord = '';
-    status = autoStart ? 'Trouvez des mots en ligne droite' : 'Appuyez sur démarrer pour lancer la partie.';
+    status = autoStart ? '' : 'Appuyez sur démarrer pour lancer la partie.';
     highlightIndex = 0;
     pendingScore = null;
     playerName = '';
     timeLeft = totalSeconds;
     clearTimer();
     started = autoStart;
+    streak = 0;
+    lastWordTime = 0;
+    feedbackClass = '';
+    celebrationClass = '';
+    comboTimer = 0;
+    hasFoundWord = false;
+    if (comboTimerId) clearInterval(comboTimerId);
     if (autoStart) startTimer();
     inputEl?.focus();
   };
@@ -196,7 +211,49 @@
 
   const addScore = (word: string) => {
     const length = word.length;
-    score += length * length;
+    const now = Date.now();
+
+    // Combo/streak system - bonus if found within 10 seconds of last word
+    if (now - lastWordTime < 10000 && lastWordTime > 0) {
+      streak += 1;
+    } else {
+      streak = 1;
+    }
+    lastWordTime = now;
+    
+    // Reset combo timer
+    comboTimer = 100;
+    if (comboTimerId) clearInterval(comboTimerId);
+    comboTimerId = setInterval(() => {
+      comboTimer -= 2;
+      if (comboTimer <= 0) {
+        comboTimer = 0;
+        if (comboTimerId) clearInterval(comboTimerId);
+      }
+    }, 200);
+
+    // Base score: length^2
+    let wordScore = length * length;
+
+    // Combo bonus
+    if (streak > 1) {
+      wordScore += streak * 10;
+    }
+
+    // Celebration for 5+ letters
+    if (length >= 5) {
+      celebrationClass = 'celebration';
+      setTimeout(() => celebrationClass = '', 600);
+    }
+
+    score += wordScore;
+    lastPointsEarned = wordScore;
+    hasFoundWord = true;
+  };
+
+  const showFeedback = (type: 'success' | 'error') => {
+    feedbackClass = type;
+    setTimeout(() => feedbackClass = '', 500);
   };
 
   const highlightPath = (path: Array<[number, number]>) => {
@@ -260,17 +317,20 @@
 
     if (foundWords.includes(word)) {
       status = `${word} déjà trouvé. Réessayez autre chose.`;
+      showFeedback('error');
       return;
     }
 
     if (!dictionarySet.has(word)) {
       status = `${word} n'est pas dans le dictionnaire.`;
+      showFeedback('error');
       return;
     }
 
     const path = findWordPath(word);
     if (!path) {
       status = `${word} n'est pas présent sur la grille.`;
+      showFeedback('error');
       return;
     }
 
@@ -278,6 +338,7 @@
     foundWords = [word, ...foundWords];
     addScore(word);
     status = `Bien joué ! ${word} fait ${word.length} lettres.`;
+    showFeedback('success');
     inputWord = '';
   };
 
@@ -367,7 +428,9 @@
         <div class="card-body p-6">
           <div class="input-row mt-4">
             <input
-              class="input input-bordered w-full"
+              class="input input-bordered w-full transition-all {feedbackClass}"
+              class:input-success={feedbackClass === 'success'}
+              class:input-error={feedbackClass === 'error'}
               type="text"
               bind:value={inputWord}
               on:keydown={handleKey}
@@ -376,7 +439,7 @@
             />
             <button class="btn btn-primary" type="button" on:click={submitWord} disabled={timeLeft <= 0 || !started}>Valider</button>
           </div>
-          <p class="status p-2 mt-4">{status}</p>
+          <p class="status p-2 mt-4 {celebrationClass}" class:text-primary={celebrationClass === 'celebration'} class:font-bold={celebrationClass === 'celebration'} class:scale-110={celebrationClass === 'celeblation'}>{status}</p>
           <div class="found p-2 mt-4">
             <p class="found-title">Mots trouvés</p>
             {#if foundWords.length === 0}
@@ -448,13 +511,25 @@
     <aside class="column right">
       <div class="stats card bg-base-100 shadow-xl">
         <div class="card-body p-6 gap-4">
-          <div class="stat flex flex-col items-center gap-1">
+          <div class="flex flex-col items-center gap-1">
             <span class="label">Temps</span>
             <span class="value">{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}</span>
+            <progress
+              class="progress w-56 mt-2 bg-gray-300 [&::-webkit-progress-bar]:bg-gray-300"
+              value={timeLeft}
+              max={totalSeconds}
+            ></progress>
           </div>
-          <div class="stat flex flex-col items-center gap-1">
+          <div class="flex flex-col items-center gap-1 mt-3">
             <span class="label">Score</span>
             <span class="value">{score}</span>
+            {#if hasFoundWord}
+              <span class="text-sm text-primary font-bold mt-1">Combo: {streak > 0 ? streak : 1}x</span>
+              <progress class="progress progress-primary w-32 h-2 mt-1" value={comboTimer} max="100"></progress>
+              {#if lastPointsEarned > 0}
+                <span class="text-xs text-secondary">+{lastPointsEarned} pts</span>
+              {/if}
+            {/if}
           </div>
           <div class="flex justify-center">
             <button class="btn btn-secondary mt-2" type="button" on:click={() => restart(true)}>Recommencer</button>
@@ -900,5 +975,37 @@
     .input-row {
       flex-direction: column;
     }
+  }
+
+  .input-success {
+    animation: glow-success 0.5s ease-out;
+  }
+
+  .input-error {
+    animation: shake 0.5s ease-out;
+  }
+
+  .celebration {
+    animation: celebrate 0.6s ease-out;
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-8px); }
+    40% { transform: translateX(8px); }
+    60% { transform: translateX(-6px); }
+    80% { transform: translateX(6px); }
+  }
+
+  @keyframes glow-success {
+    0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+    50% { box-shadow: 0 0 20px 5px rgba(34, 197, 94, 0.5); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+  }
+
+  @keyframes celebrate {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
   }
 </style>
