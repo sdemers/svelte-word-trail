@@ -354,37 +354,41 @@
 <main class="page">
   <section class="layout">
     <aside class="column left">
-      <div class="intro">
-        <p class="kicker">Word Trail</p>
-        <p class="subtitle">Composez des mots en ligne droite. Plus c'est long, plus ça rapporte.</p>
-        <div class="rules">
-          <p>Les mots sont en français, 3 à 8 lettres.</p>
+      <div class="intro card bg-base-100 shadow-xl">
+        <div class="card-body p-6">
+          <p class="kicker p-2 text-lg font-bold">Word Trail</p>
+          <p class="subtitle p-2 mt-4">Composez des mots en ligne droite. Plus c'est long, plus ça rapporte.</p>
+          <div class="rules p-2 mt-4">
+            <p>Les mots sont en français, 3 à 8 lettres.</p>
+          </div>
         </div>
       </div>
-      <div class="panel">
-      <div class="input-row">
-        <input
-          type="text"
-          placeholder="Entrez un mot puis Entrer"
-          bind:value={inputWord}
-          on:keydown={handleKey}
-          disabled={timeLeft <= 0 || !started}
-          bind:this={inputEl}
-        />
-        <button type="button" on:click={submitWord} disabled={timeLeft <= 0 || !started}>Valider</button>
-      </div>
-        <p class="status">{status}</p>
-        <div class="found">
-          <p class="found-title">Mots trouvés</p>
-          {#if foundWords.length === 0}
-            <p class="empty">Aucun mot pour le moment.</p>
-          {:else}
-            <div class="chips">
-              {#each foundWords as word}
-                <span class="chip">{word}</span>
-              {/each}
-            </div>
-          {/if}
+      <div class="panel card bg-base-100 shadow-xl">
+        <div class="card-body p-6">
+          <div class="input-row mt-4">
+            <input
+              class="input input-bordered w-full"
+              type="text"
+              bind:value={inputWord}
+              on:keydown={handleKey}
+              disabled={timeLeft <= 0 || !started}
+              bind:this={inputEl}
+            />
+            <button class="btn btn-primary" type="button" on:click={submitWord} disabled={timeLeft <= 0 || !started}>Valider</button>
+          </div>
+          <p class="status p-2 mt-4">{status}</p>
+          <div class="found p-2 mt-4">
+            <p class="found-title">Mots trouvés</p>
+            {#if foundWords.length === 0}
+              <p class="empty">Aucun mot pour le moment.</p>
+            {:else}
+              <div class="chips">
+                {#each foundWords as word}
+                  <span class="chip badge badge-secondary">{word}</span>
+                {/each}
+              </div>
+            {/if}
+          </div>
         </div>
       </div>
     </aside>
@@ -392,32 +396,37 @@
     <div class="board">
       {#if !started}
         <div class="overlay">
-          <div class="overlay-card">
-            <p class="overlay-title">Pret a jouer ?</p>
-            <p class="overlay-sub">La grille est cachée. Lancez la partie pour commencer.</p>
-            <button type="button" on:click={startGame}>Démarrer</button>
+          <div class="overlay-card card bg-base-100 shadow-2xl">
+            <div class="card-body items-center text-center p-8">
+              <p class="overlay-title text-2xl font-bold mb-6">Pret a jouer ?</p>
+              <p class="overlay-sub mb-6">La grille est cachée. Lancez la partie pour commencer.</p>
+              <button class="btn btn-primary btn-lg" type="button" on:click={startGame}>Démarrer</button>
+            </div>
           </div>
         </div>
       {:else if timeLeft <= 0}
         <div class="overlay">
-          <div class="overlay-card">
-            <p class="overlay-title">Temps écoulé</p>
-            <p class="overlay-sub">La partie est terminée. Prêt à rejouer ?</p>
-            {#if pendingScore !== null}
-              <div class="name-entry">
-                <p class="name-label">Votre nom (3 lettres)</p>
-                <div class="name-row">
-                  <input
-                    type="text"
-                    maxlength="3"
-                    bind:value={playerName}
-                    bind:this={nameEl}
-                  />
-                  <button type="button" on:click={submitHighScore}>Valider</button>
+          <div class="overlay-card card bg-base-100 shadow-2xl">
+            <div class="card-body items-center text-center p-8">
+              <p class="overlay-title text-2xl font-bold mb-4">Temps écoulé</p>
+              <p class="overlay-sub mb-6">La partie est terminée. Prêt à rejouer ?</p>
+              {#if pendingScore !== null}
+                <div class="name-entry mb-4">
+                  <p class="name-label mb-2">Votre nom (3 lettres)</p>
+                  <div class="name-row">
+                    <input
+                      class="input input-bordered w-20 text-center uppercase"
+                      type="text"
+                      maxlength="3"
+                      bind:value={playerName}
+                      bind:this={nameEl}
+                    />
+                    <button class="btn btn-primary" type="button" on:click={submitHighScore}>Valider</button>
+                  </div>
                 </div>
-              </div>
-            {/if}
-            <button type="button" on:click={() => restart(true)}>Rejouer</button>
+              {/if}
+              <button class="btn btn-primary btn-lg" type="button" on:click={() => restart(true)}>Rejouer</button>
+            </div>
           </div>
         </div>
       {/if}
@@ -437,36 +446,42 @@
     </div>
 
     <aside class="column right">
-      <div class="stats">
-        <div class="stat">
-          <span class="label">Temps</span>
-          <span class="value">{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}</span>
-        </div>
-        <div class="stat">
-          <span class="label">Score</span>
-          <span class="value">{score}</span>
-        </div>
-        <button class="restart" type="button" on:click={() => restart(true)}>Recommencer</button>
-      </div>
-      <div class="scores-card">
-        <h2>Classement</h2>
-        <p class="scores-sub">Top 10 des meilleurs scores</p>
-        <div class="scores-table">
-          <div class="scores-row header">
-            <span>#</span>
-            <span>Nom</span>
-            <span>Score</span>
+      <div class="stats card bg-base-100 shadow-xl">
+        <div class="card-body p-6 gap-4">
+          <div class="stat flex flex-col items-center gap-1">
+            <span class="label">Temps</span>
+            <span class="value">{Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}</span>
           </div>
-          {#each highScores as entry, index}
-            <div class="scores-row">
-              <span>{index + 1}</span>
-              <span>{entry.name}</span>
-              <span>{entry.score}</span>
+          <div class="stat flex flex-col items-center gap-1">
+            <span class="label">Score</span>
+            <span class="value">{score}</span>
+          </div>
+          <div class="flex justify-center">
+            <button class="btn btn-secondary mt-2" type="button" on:click={() => restart(true)}>Recommencer</button>
+          </div>
+        </div>
+      </div>
+      <div class="scores-card card bg-base-100 shadow-xl">
+        <div class="card-body p-6">
+          <h2 class="card-title mb-4">Classement</h2>
+          <div class="scores-sub mt-3">Top 10 des meilleurs scores</div>
+          <div class="scores-table mt-3">
+            <div class="scores-row header">
+              <span>#</span>
+              <span>Nom</span>
+              <span>Score</span>
             </div>
-          {/each}
-          {#if highScores.length === 0}
-            <p class="scores-empty">Aucun score pour l'instant.</p>
-          {/if}
+            {#each highScores as entry, index}
+              <div class="scores-row">
+                <span>{index + 1}</span>
+                <span>{entry.name}</span>
+                <span>{entry.score}</span>
+              </div>
+            {/each}
+            {#if highScores.length === 0}
+              <p class="scores-empty">Aucun score pour l'instant.</p>
+            {/if}
+          </div>
         </div>
       </div>
     </aside>
@@ -509,7 +524,7 @@
 
   .column {
     display: grid;
-    gap: 18px;
+    gap: 48px;
   }
 
   .intro {
@@ -518,7 +533,7 @@
     padding: 22px 24px;
     box-shadow: 0 16px 32px rgba(15, 23, 36, 0.12);
     display: grid;
-    gap: 12px;
+    gap: 24px;
   }
 
   .kicker {
@@ -532,7 +547,7 @@
 
   .rules {
     display: grid;
-    gap: 8px;
+    gap: 16px;
     font-size: 14px;
     color: #56627a;
   }
@@ -555,9 +570,9 @@
   .stats {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 32px;
     background: rgba(255, 255, 255, 0.8);
-    padding: 16px 20px;
+    padding: 24px 28px;
     border-radius: 18px;
     box-shadow: 0 16px 30px rgba(22, 34, 54, 0.1);
   }
@@ -565,8 +580,9 @@
 
   .stat {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
   }
 
 
@@ -603,17 +619,17 @@
     box-shadow: 0 18px 36px rgba(16, 24, 39, 0.12);
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 32px;
   }
 
   .scores-card {
     width: 100%;
     background: rgba(255, 255, 255, 0.95);
     border-radius: 20px;
-    padding: 20px;
+    padding: 24px;
     box-shadow: 0 18px 36px rgba(16, 24, 39, 0.12);
     display: grid;
-    gap: 12px;
+    gap: 24px;
   }
 
   .scores-card h2 {
@@ -622,20 +638,19 @@
   }
 
   .scores-sub {
-    margin: 0;
     font-size: 15px;
     color: #5a677d;
   }
 
   .scores-table {
     display: grid;
-    gap: 8px;
+    gap: 16px;
   }
 
   .scores-row {
     display: grid;
     grid-template-columns: 32px 1fr 1fr;
-    gap: 8px;
+    gap: 16px;
     font-size: 18px;
     color: #2b3443;
   }
@@ -849,6 +864,26 @@
     .column.right {
       order: 3;
     }
+  }
+
+  .card-body {
+    padding: 1rem !important;
+  }
+
+  .overlay-title {
+    margin-bottom: 0.75rem;
+  }
+
+  .overlay-sub {
+    margin-bottom: 0.75rem;
+  }
+
+  .name-entry {
+    margin-bottom: 0.75rem;
+  }
+
+  .name-entry input {
+    margin-bottom: 0.25rem;
   }
 
   @media (max-width: 600px) {
