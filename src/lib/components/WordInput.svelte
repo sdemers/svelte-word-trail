@@ -30,7 +30,7 @@
         class:input-success={feedbackClass === 'success'}
         class:input-error={feedbackClass === 'error'}
         type="text"
-        placeholder="Entrez un mot puis Entrer"
+        placeholder="Entrez un mot"
         bind:value={inputWord}
         onkeydown={onKeyDown}
         disabled={timeLeft <= 0 || !started}

@@ -25,8 +25,8 @@
     <div class="overlay-card card bg-base-100 shadow-2xl">
       <div class="card-body items-center text-center p-8">
         <p class="overlay-title text-2xl font-bold mb-4">Pret a jouer ?</p>
-        <p class="overlay-sub mb-6">La grille est cachee. Lancez la partie pour commencer.</p>
-        <button class="btn btn-primary btn-lg" type="button" onclick={onStart}>Demarrer</button>
+        <p class="overlay-sub mb-6">La grille est cachée. Lancez la partie pour commencer.</p>
+        <button class="btn btn-primary btn-lg" type="button" onclick={onStart}>Démarrer</button>
       </div>
     </div>
   </div>
@@ -35,7 +35,7 @@
     <div class="overlay-card card bg-base-100 shadow-2xl">
       <div class="card-body items-center text-center p-8">
         <p class="overlay-title text-2xl font-bold mb-4">Temps ecoule</p>
-        <p class="overlay-sub mb-6">La partie est terminee. Pret a rejouer ?</p>
+        <p class="overlay-sub mb-6">La partie est terminée. Prêt à rejouer ?</p>
         {#if pendingScore !== null}
           <div class="name-entry mb-4">
             <p class="name-label mb-2">Votre nom (3 lettres)</p>

@@ -20,25 +20,25 @@
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const totalSeconds = 300;
 
-  let grid: Cell[][] = [];
-  let inputWord = '';
-  let foundWords: string[] = [];
-  let score = 0;
-  let timeLeft = totalSeconds;
-  let status = 'Appuyez sur démarrer pour lancer la partie.';
+  let grid = $state<Cell[][]>([]);
+  let inputWord = $state('');
+  let foundWords = $state<string[]>([]);
+  let score = $state(0);
+  let timeLeft = $state(totalSeconds);
+  let status = $state('Appuyez sur démarrer pour lancer la partie.');
   let dictionary: string[] = [];
   let dictionarySet = new Set<string>();
   let inputEl: HTMLInputElement | null = null;
   let nameEl: HTMLInputElement | null = null;
-  let started = false;
-  let streak = 0;
+  let started = $state(false);
+  let streak = $state(0);
   let lastWordTime = 0;
-  let feedbackClass = '';
-  let celebrationClass = '';
-  let lastPointsEarned = 0;
-  let comboTimer = 0;
+  let feedbackClass = $state('');
+  let celebrationClass = $state('');
+  let lastPointsEarned = $state(0);
+  let comboTimer = $state(0);
   let comboTimerId: ReturnType<typeof setInterval> | undefined;
-  let hasFoundWord = false;
+  let hasFoundWord = $state(false);
 
   type HighScore = {
     name: string;
@@ -46,13 +46,27 @@
   };
 
   const highScoreKey = 'word-trail-highscores';
-  let highScores: HighScore[] = [];
-  let pendingScore: number | null = null;
+  let highScores = $state<HighScore[]>([]);
+  let pendingScore = $state<number | null>(null);
   let playerName = '';
 
   let timerId: ReturnType<typeof setInterval> | undefined;
 
   const randomLetter = () => alphabet[Math.floor(Math.random() * alphabet.length)];
+
+  let debugMode = $state(false);
+  
+  const seed = 42;
+  let rngState = seed;
+  const seededRandom = () => {
+    rngState = (rngState * 1103515245 + 12345) & 0x7fffffff;
+    return rngState / 0x7fffffff;
+  };
+  const seededRandomLetter = () => alphabet[Math.floor(seededRandom() * alphabet.length)];
+
+  const resetSeededRandom = () => {
+    rngState = seed;
+  };
 
   const normalizeWord = (word: string) =>
     word
@@ -65,15 +79,18 @@
     const cleaned = source
       .map(normalizeWord)
       .filter((word) => word.length >= 3 && word.length <= 8);
-    const unique = Array.from(new Set(cleaned));
+    let unique = Array.from(new Set(cleaned));
+    if (debugMode) {
+      unique = unique.sort();
+    }
     dictionary = unique;
     dictionarySet = new Set(unique);
   };
 
-  const shuffle = <T,>(items: T[]) => {
+  const shuffle = <T,>(items: T[], rng: () => number = Math.random) => {
     const copy = [...items];
     for (let i = copy.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
+      const j = Math.floor(rng() * (i + 1));
       [copy[i], copy[j]] = [copy[j], copy[i]];
     }
     return copy;
@@ -98,6 +115,8 @@
   };
 
   const buildGrid = () => {
+    if (debugMode) resetSeededRandom();
+    
     const emptyGrid = Array.from({ length: size }, () =>
       Array.from({ length: size }, () => ({ letter: '', highlight: null }))
     );
@@ -113,19 +132,22 @@
       [1, 1]
     ];
 
-    const wordPool = shuffle(dictionary).slice(0, 30);
+    const rng = debugMode ? seededRandom : () => Math.random();
+    const rngLetter = debugMode ? seededRandomLetter : randomLetter;
+
+    const wordPool = shuffle(dictionary, rng).slice(0, 30);
 
     for (const word of wordPool) {
       let placed = false;
       for (let attempt = 0; attempt < 200 && !placed; attempt += 1) {
-        const [dr, dc] = directions[Math.floor(Math.random() * directions.length)];
+        const [dr, dc] = directions[Math.floor(rng() * directions.length)];
         const maxRow = dr === 1 ? size - word.length : dr === -1 ? word.length - 1 : size - 1;
         const minRow = dr === -1 ? word.length - 1 : 0;
         const maxCol = dc === 1 ? size - word.length : dc === -1 ? word.length - 1 : size - 1;
         const minCol = dc === -1 ? word.length - 1 : 0;
 
-        const startRow = Math.floor(Math.random() * (maxRow - minRow + 1)) + minRow;
-        const startCol = Math.floor(Math.random() * (maxCol - minCol + 1)) + minCol;
+        const startRow = Math.floor(rng() * (maxRow - minRow + 1)) + minRow;
+        const startCol = Math.floor(rng() * (maxCol - minCol + 1)) + minCol;
 
         let fits = true;
         const positions: Array<[number, number]> = [];
@@ -153,7 +175,7 @@
 
     for (const row of emptyGrid) {
       for (const cell of row) {
-        if (!cell.letter) cell.letter = randomLetter();
+        if (!cell.letter) cell.letter = rngLetter();
       }
     }
 
@@ -223,7 +245,7 @@
 
     // Combo/streak system - bonus if found within 10 seconds of last word
     if (now - lastWordTime < 10000 && lastWordTime > 0) {
-      streak += 1;
+      streak = Math.min(streak + 1, 10);
     } else {
       streak = 1;
     }
@@ -244,8 +266,9 @@
     let wordScore = length * length;
 
     // Combo bonus
-    if (streak > 1) {
-      wordScore += streak * 10;
+    if (streak >= 2) {
+      const bonus = Math.min(streak, 10) * 15;
+      wordScore += bonus;
     }
 
     // Celebration for 5+ letters
@@ -421,6 +444,10 @@
 </svelte:head>
 
 <main class="page">
+  <label class="debug-toggle">
+    <input type="checkbox" bind:checked={debugMode} />
+    Debug
+  </label>
   <section class="layout">
     <aside class="column left">
       <Intro />
@@ -493,6 +520,20 @@
     display: flex;
     flex-direction: column;
     gap: 32px;
+    position: relative;
+  }
+
+  .debug-toggle {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-size: 12px;
+    color: #7b879c;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    z-index: 10;
   }
 
   .layout {

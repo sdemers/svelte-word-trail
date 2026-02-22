@@ -4,7 +4,7 @@
 
 <div class="card bg-base-100 shadow-xl">
   <div class="card-body p-4">
-    <h3 class="card-title text-base">Mots trouves</h3>
+    <h3 class="card-title text-base">Mots trouvés</h3>
     {#if foundWords.length === 0}
       <p class="empty">Aucun mot pour le moment.</p>
     {:else}
