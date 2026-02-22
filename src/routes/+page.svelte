@@ -17,7 +17,7 @@
   let foundWords: string[] = [];
   let score = 0;
   let timeLeft = totalSeconds;
-  let status = 'Trouvez des mots en ligne droite';
+  let status = 'Appuyez sur démarrer pour lancer la partie.';
   let dictionary: string[] = [];
   let dictionarySet = new Set<string>();
   let inputEl: HTMLInputElement | null = null;
