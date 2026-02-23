@@ -381,18 +381,19 @@
     try {
       const response = await fetch('/api/highscores');
       const data = await response.json();
-      highScores = data;
+      highScores = Array.isArray(data) ? data : [];
     } catch {
       highScores = [];
     }
   };
 
   const saveHighScoreOnline = async (name: string, score: number) => {
+    const gridData = grid.map(row => row.map(cell => cell.letter));
     try {
       await fetch('/api/highscores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, score })
+        body: JSON.stringify({ name, score, grid: gridData, words: foundWords })
       });
       await loadHighScores();
     } catch (error) {
