@@ -24,7 +24,7 @@
   <div class="overlay">
     <div class="overlay-card card bg-base-100 shadow-2xl">
       <div class="card-body items-center text-center p-8">
-        <p class="overlay-title text-2xl font-bold mb-4">Pret a jouer ?</p>
+        <p class="overlay-title text-2xl font-bold mb-4">Prêt à jouer ?</p>
         <p class="overlay-sub mb-6">La grille est cachée. Lancez la partie pour commencer.</p>
         <button class="btn btn-primary btn-lg" type="button" onclick={onStart}>Démarrer</button>
       </div>

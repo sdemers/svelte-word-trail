@@ -49,8 +49,6 @@
     score: number;
   };
 
-  const highScoreKey = 'word-trail-highscores';
-
   const randomLetter = () => alphabet[Math.floor(Math.random() * alphabet.length)];
 
   const seed = 42;
@@ -75,7 +73,7 @@
     const source = frenchRaw as string[];
     const cleaned = source
       .map(normalizeWord)
-      .filter((word) => word.length >= 3 && word.length <= 8);
+      .filter((word) => word.length >= 4 && word.length <= 15);
     let unique = Array.from(new Set(cleaned));
     if (debugMode) {
       unique = unique.sort();
@@ -299,7 +297,7 @@
 
   const findWordPath = (word: string) => {
     const target = normalizeWord(word).trim();
-    if (target.length < 3) return null;
+    if (target.length < 4) return null;
 
     const directions = [
       [-1, 0],
@@ -443,7 +441,7 @@
   <!-- <label class="debug-toggle">
     <input type="checkbox" bind:checked={debugMode} />
     Debug
-  </label>
+  </label> -->
   <section class="layout">
     <aside class="column left">
       <Intro />
@@ -542,21 +540,6 @@
     display: grid;
     gap: 48px;
   }
-
-
-  input {
-    flex: 1;
-    padding: 12px 14px;
-    border-radius: 12px;
-    border: 1px solid #d4dbe7;
-    font-size: 16px;
-  }
-
-  input:focus {
-    outline: 2px solid #f3a25b;
-    border-color: transparent;
-  }
-
 
   @media (max-width: 900px) {
     .layout {

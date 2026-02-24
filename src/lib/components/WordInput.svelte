@@ -68,6 +68,12 @@
     animation: celebrate 0.6s ease-out;
   }
 
+  input:focus {
+    outline: 2px solid #f3a25b;
+    border-color: transparent;
+  }
+
+
   @keyframes shake {
     0%, 100% { transform: translateX(0); }
     20% { transform: translateX(-8px); }

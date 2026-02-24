@@ -11,8 +11,8 @@ async function ensureInit() {
 }
 
 const MAX_NAME_LENGTH = 3;
-const RATE_LIMIT_WINDOW = 60 * 1000;
-const MAX_SUBMISSIONS_PER_WINDOW = 3;
+const RATE_LIMIT_WINDOW = 5 * 59 * 1000;
+const MAX_SUBMISSIONS_PER_WINDOW = 1;
 const GRID_SIZE = 15;
 
 const rateLimitMap = new Map<string, { count: number; windowStart: number }>();

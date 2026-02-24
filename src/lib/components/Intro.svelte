@@ -4,7 +4,7 @@
 <div class="intro card bg-base-100 shadow-xl">
   <div class="card-body p-6">
     <p class="kicker p-2 text-lg font-bold">Word Trail</p>
-    <p class="subtitle p-2 mt-4">Trouvez des mots de 3 à 8 lettres.<br/>Plus c'est long, plus ça rapporte.<br/>Réalisez des combos pour multiplier les points !</p>
+    <p class="subtitle p-2 mt-4">Trouvez des mots de 4 à 15 lettres.<br/>Plus c'est long, plus ça rapporte.<br/>Réalisez des combos pour multiplier les points !</p>
   </div>
 </div>
 
