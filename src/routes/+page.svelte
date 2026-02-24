@@ -443,7 +443,7 @@
   <!-- <label class="debug-toggle">
     <input type="checkbox" bind:checked={debugMode} />
     Debug
-  </label> -->
+  </label>
   <section class="layout">
     <aside class="column left">
       <Intro />
