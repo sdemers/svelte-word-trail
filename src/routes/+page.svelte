@@ -357,8 +357,8 @@
     return null;
   };
 
-  const submitWord = () => {
-    if (timeLeft <= 0 || !started) return;
+  const submitWord = async () => {
+    if (timeLeft <= 0 || !started || !gameId) return;
     const word = normalizeWord(inputWord.trim());
     inputWord = '';
     if (!word) return;
@@ -369,25 +369,35 @@
       return;
     }
 
-    if (!dictionarySet.has(word)) {
-      status = `${word} n'est pas dans le dictionnaire.`;
-      showFeedback('error');
-      return;
-    }
+    try {
+      const response = await fetch('/api/highscores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'submitWord', gameId, word })
+      });
+      const data = await response.json();
 
-    const path = findWordPath(word);
-    if (!path) {
-      status = `${word} n'est pas présent sur la grille.`;
-      showFeedback('error');
-      return;
-    }
+      if (data.error) {
+        status = data.error;
+        showFeedback('error');
+        return;
+      }
 
-    highlightPath(path);
-    foundWords = [word, ...foundWords];
-    addScore(word);
-    status = `Bien joué ! ${word} fait ${word.length} lettres.`;
-    showFeedback('success');
-    inputWord = '';
+      foundWords = data.foundWords;
+      
+      const path = findWordPath(word);
+      if (path) {
+        highlightPath(path);
+      }
+      
+      addScore(word);
+      status = `Bien joué ! ${word} fait ${word.length} lettres.`;
+      showFeedback('success');
+    } catch (error) {
+      console.error('Failed to submit word:', error);
+      status = 'Erreur lors de la soumission.';
+      showFeedback('error');
+    }
   };
 
   const handleKey = (event: KeyboardEvent) => {
@@ -409,7 +419,7 @@
       await fetch('/api/highscores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'submitScore', gameId, name, foundWords, score })
+        body: JSON.stringify({ action: 'submitScore', gameId, name, score })
       });
       await loadHighScores();
     } catch (error) {

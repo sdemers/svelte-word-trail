@@ -48,6 +48,7 @@ async function ensureInit() {
 
 interface GameState {
   createdAt: number;
+  foundWords: string[];
 }
 
 const activeGames = new Map<string, GameState>();
@@ -85,19 +86,42 @@ export async function POST({ request }: { request: Request }) {
     const body = await request.json();
     const { action, gameId, name, foundWords, score } = body;
 
-    console.log('Received POST:', { action, gameId, name, foundWords, score });
-
     if (action === 'start') {
       const id = generateId();
-      activeGames.set(id, { createdAt: Date.now() });
+      activeGames.set(id, { createdAt: Date.now(), foundWords: [] });
 
       return json({ gameId: id });
     }
 
+    if (action === 'submitWord') {
+      if (!gameId || !activeGames.has(gameId)) {
+        return json({ error: 'Partie invalide.' }, { status: 400 });
+      }
+
+      const { word } = body;
+      if (!word || typeof word !== 'string') {
+        return json({ error: 'Mot invalide.' }, { status: 400 });
+      }
+
+      const game = activeGames.get(gameId)!;
+      const normalizedWord = word.normalize('NFD').replace(/[^a-zA-Z]/g, '').toUpperCase();
+
+      if (game.foundWords.includes(normalizedWord)) {
+        return json({ error: `${word} déjà trouvé.`, foundWords: game.foundWords });
+      }
+
+      if (!dictionary.has(normalizedWord)) {
+        return json({ error: `${word} n'est pas dans le dictionnaire.`, foundWords: game.foundWords });
+      }
+
+      game.foundWords.push(normalizedWord);
+
+      return json({ success: true, foundWords: game.foundWords });
+    }
+
     if (action === 'submitScore') {
       if (!gameId || !activeGames.has(gameId)) {
-        console.log('Invalid gameId:', gameId);
-        return json({ error: 'Invalid game' }, { status: 400 });
+        return json({ error: 'Partie invalide.' }, { status: 400 });
       }
 
       const game = activeGames.get(gameId)!;
@@ -105,19 +129,16 @@ export async function POST({ request }: { request: Request }) {
       const MIN_GAME_DURATION = 5 * 60 * 1000;
 
       if (gameDuration < MIN_GAME_DURATION) {
-        console.log(`Game too short: ${gameDuration}ms (gameId: ${gameId})`);
-        return json({ error: 'Game too short' }, { status: 400 });
+        return json({ error: 'Partie trop courte ! Petit tricheur :P' }, { status: 400 });
       }
 
       if (!Array.isArray(foundWords) || foundWords.length === 0 || typeof score !== 'number') {
-        console.log('Invalid data:', { foundWords, score });
-        return json({ error: 'Invalid data' }, { status: 400 });
+        return json({ error: 'Données invalides' }, { status: 400 });
       }
 
       for (const word of foundWords) {
         if (!dictionary.has(word)) {
-          console.log('Invalid word:', word);
-          return json({ error: `Invalid word: ${word}` }, { status: 400 });
+          return json({ error: `Mot invalide: ${word}` }, { status: 400 });
         }
       }
 
@@ -127,8 +148,7 @@ export async function POST({ request }: { request: Request }) {
       const cleanedName = name?.toString().toUpperCase().slice(0, MAX_NAME_LENGTH) || '';
 
       if (cleanedName.length !== MAX_NAME_LENGTH || !/^[A-Z]{3}$/.test(cleanedName)) {
-        console.log('Invalid name format:', cleanedName);
-        return json({ error: 'Invalid name format' }, { status: 400 });
+        return json({ error: 'Format de nom invalide.' }, { status: 400 });
       }
 
       await db.execute({
