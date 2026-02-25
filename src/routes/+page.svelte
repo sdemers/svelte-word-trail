@@ -20,6 +20,7 @@
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 
   let debugMode = $state(false);
+  let gameId = $state('');
   const totalSeconds = $derived(debugMode ? 20 : 300);
 
   let grid = $state<Cell[][]>([]);
@@ -208,7 +209,7 @@
     }, 1000);
   };
 
-  const restart = (autoStart = true) => {
+  const restart = async (autoStart = true) => {
     buildDictionary();
     buildGrid();
     resetHighlights();
@@ -221,7 +222,6 @@
     playerName = '';
     timeLeft = totalSeconds;
     clearTimer();
-    started = autoStart;
     streak = 0;
     lastWordTime = 0;
     feedbackClass = '';
@@ -229,8 +229,27 @@
     comboTimer = 0;
     hasFoundWord = false;
     if (comboTimerId) clearInterval(comboTimerId);
-    if (autoStart) startTimer();
-    inputEl?.focus();
+
+    if (autoStart) {
+      try {
+        const response = await fetch('/api/highscores', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'start' })
+        });
+        const data = await response.json();
+        gameId = data.gameId;
+        console.log('Game started with ID:', gameId);
+      } catch (error) {
+        console.error('Failed to start game:', error);
+      }
+
+      started = true;
+      startTimer();
+      inputEl?.focus();
+    } else {
+      started = autoStart;
+    }
   };
 
   const startGame = () => {
@@ -386,12 +405,11 @@
   };
 
   const saveHighScoreOnline = async (name: string, score: number) => {
-    const gridData = grid.map(row => row.map(cell => cell.letter));
     try {
       await fetch('/api/highscores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, score, grid: gridData, words: foundWords })
+        body: JSON.stringify({ action: 'submitScore', gameId, name, foundWords, score })
       });
       await loadHighScores();
     } catch (error) {
@@ -438,10 +456,10 @@
 </svelte:head>
 
 <main class="page">
-  <!-- <label class="debug-toggle">
+  <label class="debug-toggle">
     <input type="checkbox" bind:checked={debugMode} />
     Debug
-  </label> -->
+  </label>
   <section class="layout">
     <aside class="column left">
       <Intro />
