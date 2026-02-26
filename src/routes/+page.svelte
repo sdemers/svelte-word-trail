@@ -233,7 +233,7 @@
         const response = await fetch('/api/highscores', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'start' })
+          body: JSON.stringify({ action: 'start', grid: grid.map(row => row.map(cell => cell.letter)) })
         });
         const data = await response.json();
         gameId = data.gameId;
@@ -388,12 +388,12 @@
     }
   };
 
-  const saveHighScoreOnline = async (name: string, score: number) => {
+  const saveHighScoreOnline = async (name: string) => {
     try {
       await fetch('/api/highscores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'submitScore', gameId, name, score })
+        body: JSON.stringify({ action: 'submitScore', gameId, name })
       });
       await loadHighScores();
     } catch (error) {
@@ -416,14 +416,13 @@
   };
 
   const submitHighScore = async () => {
-    if (pendingScore === null) return;
     const cleaned = playerName
       .normalize('NFD')
       .replace(/[^a-zA-Z]/g, '')
       .toUpperCase()
       .slice(0, 3);
     if (cleaned.length !== 3) return;
-    await saveHighScoreOnline(cleaned, pendingScore);
+    await saveHighScoreOnline(cleaned);
     pendingScore = null;
     playerName = '';
   };

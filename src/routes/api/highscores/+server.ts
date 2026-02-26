@@ -30,13 +30,47 @@ interface GameState {
   score: number;
   lastTime: number;
   streak: number;
+  grid: string[][];
 }
 
+const GRID_SIZE = 15;
+
 const activeGames = new Map<string, GameState>();
-const GAME_TTL = 10 * 60 * 1000;
 
 function generateId(): string {
   return crypto.randomUUID();
+}
+
+function wordInGrid(grid: string[][], word: string): boolean {
+  const directions: [number, number][] = [
+    [-1, 0], [1, 0], [0, -1], [0, 1],
+    [-1, -1], [-1, 1], [1, -1], [1, 1]
+  ];
+  
+  for (let row = 0; row < GRID_SIZE; row++) {
+    for (let col = 0; col < GRID_SIZE; col++) {
+      if (grid[row][col] !== word[0]) continue;
+      
+      for (const [dr, dc] of directions) {
+        let r = row;
+        let c = col;
+        let match = true;
+        
+        for (let i = 1; i < word.length; i++) {
+          r += dr;
+          c += dc;
+          if (r < 0 || r >= GRID_SIZE || c < 0 || c >= GRID_SIZE || grid[r][c] !== word[i]) {
+            match = false;
+            break;
+          }
+        }
+        
+        if (match) return true;
+      }
+    }
+  }
+  
+  return false;
 }
 
 export async function GET() {
@@ -65,11 +99,15 @@ export async function POST({ request }: { request: Request }) {
     await ensureInit();
 
     const body = await request.json();
-    const { action, gameId, name } = body;
+    const { action, gameId, name, grid } = body;
 
     if (action === 'start') {
+      if (!Array.isArray(grid) || grid.length !== GRID_SIZE || !Array.isArray(grid[0]) || grid[0].length !== GRID_SIZE) {
+        return json({ error: 'Invalid grid' }, { status: 400 });
+      }
+      
       const id = generateId();
-      activeGames.set(id, { createdAt: Date.now(), foundWords: [], score: 0, lastTime: 0, streak: 0 });
+      activeGames.set(id, { createdAt: Date.now(), foundWords: [], score: 0, lastTime: 0, streak: 0, grid });
 
       return json({ gameId: id });
     }
@@ -93,6 +131,10 @@ export async function POST({ request }: { request: Request }) {
 
       if (!dictionary.has(normalizedWord)) {
         return json({ error: `${word} n'est pas dans le dictionnaire.`, foundWords: game.foundWords, score: game.score });
+      }
+
+      if (!wordInGrid(game.grid, normalizedWord)) {
+        return json({ error: `${word} n'est pas sur la grille.`, foundWords: game.foundWords, score: game.score });
       }
 
       game.foundWords.push(normalizedWord);
@@ -120,12 +162,6 @@ export async function POST({ request }: { request: Request }) {
       }
 
       const game = activeGames.get(gameId)!;
-      //const gameDuration = Date.now() - game.createdAt;
-      //const MIN_GAME_DURATION = 5 * 60 * 1000;
-
-      // if (gameDuration < MIN_GAME_DURATION) {
-      //   return json({ error: 'Partie trop courte ! Petit tricheur :P' }, { status: 400 });
-      // }
 
       activeGames.delete(gameId);
 
