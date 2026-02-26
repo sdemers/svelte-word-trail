@@ -163,8 +163,6 @@ export async function POST({ request }: { request: Request }) {
 
       const game = activeGames.get(gameId)!;
 
-      activeGames.delete(gameId);
-
       const MAX_NAME_LENGTH = 3;
       const cleanedName = name?.toString().toUpperCase().slice(0, MAX_NAME_LENGTH) || '';
 
@@ -176,6 +174,8 @@ export async function POST({ request }: { request: Request }) {
         sql: 'INSERT INTO high_scores (name, score) VALUES (?, ?)',
         args: [cleanedName, game.score]
       });
+
+      activeGames.delete(gameId);
 
       return json({ success: true });
     }

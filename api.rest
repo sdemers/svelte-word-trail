@@ -1,0 +1,9 @@
+POST https://word-trail-navy.vercel.app/api/highscores
+Content-Type: "application/json"
+{
+    action: "submitScore",
+    gameId: "56651ff2-e15d-4dda-aa87-a9ae4997d49b",
+    name: "SDE"
+}
+
+GET https://word-trail-navy.vercel.app/api/highscores
