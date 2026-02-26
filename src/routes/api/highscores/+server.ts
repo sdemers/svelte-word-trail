@@ -8,39 +8,17 @@ async function ensureInit() {
   if (!initialized) {
     await initDb();
 
-    const result = await db.execute({
-      sql: "SELECT name FROM sqlite_master WHERE type='table' AND name='words'",
-      args: []
-    });
+    const frenchRaw = await import('an-array-of-french-words/index.json');
+    const words = frenchRaw.default as string[];
+    const normalized = words
+      .map(w => w.normalize('NFD').replace(/[^a-zA-Z]/g, '').toUpperCase())
+      .filter(w => w.length >= 4 && w.length <= 15);
 
-    if (result.rows.length === 0) {
-      await db.execute(`
-        CREATE TABLE IF NOT EXISTS words (
-          word TEXT PRIMARY KEY
-        )
-      `);
-
-      const frenchRaw = await import('an-array-of-french-words/index.json');
-      const words = frenchRaw.default as string[];
-      const normalized = words
-        .map(w => w.normalize('NFD').replace(/[^a-zA-Z]/g, '').toUpperCase())
-        .filter(w => w.length >= 3 && w.length <= 8);
-
-      for (const word of new Set(normalized)) {
-        await db.execute({
-          sql: 'INSERT OR IGNORE INTO words (word) VALUES (?)',
-          args: [word]
-        });
-      }
+    for (const word of new Set(normalized)) {
+      dictionary.add(word);
     }
 
-    const dictResult = await db.execute({
-      sql: 'SELECT word FROM words',
-      args: []
-    });
-    for (const row of dictResult.rows) {
-      dictionary.add(String(row.word));
-    }
+    console.log(`Dictionnaire chargé avec ${dictionary.size} mots.`);
 
     initialized = true;
   }
@@ -49,6 +27,9 @@ async function ensureInit() {
 interface GameState {
   createdAt: number;
   foundWords: string[];
+  score: number;
+  lastTime: number;
+  streak: number;
 }
 
 const activeGames = new Map<string, GameState>();
@@ -84,11 +65,11 @@ export async function POST({ request }: { request: Request }) {
     await ensureInit();
 
     const body = await request.json();
-    const { action, gameId, name, foundWords, score } = body;
+    const { action, gameId, name } = body;
 
     if (action === 'start') {
       const id = generateId();
-      activeGames.set(id, { createdAt: Date.now(), foundWords: [] });
+      activeGames.set(id, { createdAt: Date.now(), foundWords: [], score: 0, lastTime: 0, streak: 0 });
 
       return json({ gameId: id });
     }
@@ -107,16 +88,30 @@ export async function POST({ request }: { request: Request }) {
       const normalizedWord = word.normalize('NFD').replace(/[^a-zA-Z]/g, '').toUpperCase();
 
       if (game.foundWords.includes(normalizedWord)) {
-        return json({ error: `${word} déjà trouvé.`, foundWords: game.foundWords });
+        return json({ error: `${word} déjà trouvé.`, foundWords: game.foundWords, score: game.score });
       }
 
       if (!dictionary.has(normalizedWord)) {
-        return json({ error: `${word} n'est pas dans le dictionnaire.`, foundWords: game.foundWords });
+        return json({ error: `${word} n'est pas dans le dictionnaire.`, foundWords: game.foundWords, score: game.score });
       }
 
       game.foundWords.push(normalizedWord);
 
-      return json({ success: true, foundWords: game.foundWords });
+      const wordLength = normalizedWord.length;
+      const now = Date.now();
+      
+      if (now - game.lastTime < 10000 && game.lastTime > 0) {
+        game.streak = Math.min(game.streak + 1, 10);
+      } else {
+        game.streak = 1;
+      }
+      game.lastTime = now;
+      
+      const baseScore = wordLength * wordLength;
+      const bonus = game.streak >= 2 ? game.streak * 15 : 0;
+      game.score += baseScore + bonus;
+
+      return json({ success: true, foundWords: game.foundWords, score: game.score, streak: game.streak });
     }
 
     if (action === 'submitScore') {
@@ -125,22 +120,12 @@ export async function POST({ request }: { request: Request }) {
       }
 
       const game = activeGames.get(gameId)!;
-      const gameDuration = Date.now() - game.createdAt;
-      const MIN_GAME_DURATION = 5 * 60 * 1000;
+      //const gameDuration = Date.now() - game.createdAt;
+      //const MIN_GAME_DURATION = 5 * 60 * 1000;
 
-      if (gameDuration < MIN_GAME_DURATION) {
-        return json({ error: 'Partie trop courte ! Petit tricheur :P' }, { status: 400 });
-      }
-
-      if (!Array.isArray(foundWords) || foundWords.length === 0 || typeof score !== 'number') {
-        return json({ error: 'Données invalides' }, { status: 400 });
-      }
-
-      for (const word of foundWords) {
-        if (!dictionary.has(word)) {
-          return json({ error: `Mot invalide: ${word}` }, { status: 400 });
-        }
-      }
+      // if (gameDuration < MIN_GAME_DURATION) {
+      //   return json({ error: 'Partie trop courte ! Petit tricheur :P' }, { status: 400 });
+      // }
 
       activeGames.delete(gameId);
 
@@ -153,7 +138,7 @@ export async function POST({ request }: { request: Request }) {
 
       await db.execute({
         sql: 'INSERT INTO high_scores (name, score) VALUES (?, ?)',
-        args: [cleanedName, score]
+        args: [cleanedName, game.score]
       });
 
       return json({ success: true });

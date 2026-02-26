@@ -105,7 +105,6 @@
   let highlightIndex = 0;
   let timerId: ReturnType<typeof setInterval> | undefined;
   let comboTimerId: ReturnType<typeof setInterval> | undefined;
-  let lastWordTime = 0;
 
   const nextHighlightColor = () => {
     const color = highlightPalette[highlightIndex % highlightPalette.length];
@@ -223,7 +222,6 @@
     timeLeft = totalSeconds;
     clearTimer();
     streak = 0;
-    lastWordTime = 0;
     feedbackClass = '';
     celebrationClass = '';
     comboTimer = 0;
@@ -254,49 +252,6 @@
 
   const startGame = () => {
     restart(true);
-  };
-
-  const addScore = (word: string) => {
-    const length = word.length;
-    const now = Date.now();
-
-    // Combo/streak system - bonus if found within 10 seconds of last word
-    if (now - lastWordTime < 10000 && lastWordTime > 0) {
-      streak = Math.min(streak + 1, 10);
-    } else {
-      streak = 1;
-    }
-    lastWordTime = now;
-    
-    // Reset combo timer
-    comboTimer = 100;
-    if (comboTimerId) clearInterval(comboTimerId);
-    comboTimerId = setInterval(() => {
-      comboTimer -= 2;
-      if (comboTimer <= 0) {
-        comboTimer = 0;
-        if (comboTimerId) clearInterval(comboTimerId);
-      }
-    }, 200);
-
-    // Base score: length^2
-    let wordScore = length * length;
-
-    // Combo bonus
-    if (streak >= 2) {
-      const bonus = Math.min(streak, 10) * 15;
-      wordScore += bonus;
-    }
-
-    // Celebration for 5+ letters
-    if (length >= 5) {
-      celebrationClass = 'celebration';
-      setTimeout(() => celebrationClass = '', 600);
-    }
-
-    score += wordScore;
-    lastPointsEarned = wordScore;
-    hasFoundWord = true;
   };
 
   const showFeedback = (type: 'success' | 'error') => {
@@ -384,13 +339,32 @@
       }
 
       foundWords = data.foundWords;
-      
+      score = data.score;
+      streak = data.streak || 0;
+
       const path = findWordPath(word);
       if (path) {
         highlightPath(path);
       }
-      
-      addScore(word);
+
+      lastPointsEarned = word.length * word.length + (streak >= 2 ? streak * 15 : 0);
+      hasFoundWord = true;
+
+      if (word.length >= 5) {
+        celebrationClass = 'celebration';
+        setTimeout(() => celebrationClass = '', 600);
+      }
+
+      comboTimer = 100;
+      if (comboTimerId) clearInterval(comboTimerId);
+      comboTimerId = setInterval(() => {
+        comboTimer -= 2;
+        if (comboTimer <= 0) {
+          comboTimer = 0;
+          if (comboTimerId) clearInterval(comboTimerId);
+        }
+      }, 200);
+
       status = `Bien joué ! ${word} fait ${word.length} lettres.`;
       showFeedback('success');
     } catch (error) {
@@ -466,10 +440,10 @@
 </svelte:head>
 
 <main class="page">
-  <label class="debug-toggle">
+  <!-- <label class="debug-toggle">
     <input type="checkbox" bind:checked={debugMode} />
     Debug
-  </label>
+  </label> -->
   <section class="layout">
     <aside class="column left">
       <Intro />
